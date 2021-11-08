@@ -1,50 +1,41 @@
-trigger:
-- release*
+name: Whitesource Prioritize DotNET Core
 
-pool:
-  vmImage: 'windows-latest'
+on: workflow_dispatch
 
-variables:
-  solution: '**/*.sln'
-  buildPlatform: 'Any CPU'
-  buildConfiguration: 'Release'
+jobs:
+  build:
 
-steps:
-- task: NuGetToolInstaller@1
+    runs-on: ubuntu-latest
 
-- task: NuGetCommand@2
-  inputs:
-    restoreSolution: '$(solution)'
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.402
+    - name: Build CSProj
+      run: dotnet run -p build/build.csproj
+    - name: WhiteSource Unified Agent Scan
+      env:
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        WS_APIKEY: ${{secrets.APIKEY}}
+        WS_USERKEY: ${{secrets.USERKEY}}
+        WS_WSS_URL: https://app.whitesourcesoftware.com/agent
+        WS_PRODUCTNAME: GH_${{github.event.repository.name}}
+        WS_PROJECTNAME: ${{github.ref}}_Prioritize
+        WS_ENABLEIMPACTANALYSIS: true
+        WS_REQUIREKNOWNSHA1: false
+        WS_RESOLVEALLDEPENDENCIES: false
+        WS_NUGET_RESOLVEDEPENDENCIES: true
+        WS_NUGET_RUNPRESTEP: true
+        WS_FILESYSTEMSCAN: false
+        WS_GENERATEPROJECTDETAILSJSON: true
+        WS_EXCLUDES: '**/build/** **/tests/**'
+      run: |
+        curl -LJO https://unified-agent.s3.amazonaws.com/wss-unified-agent.jar
+        echo Unified Agent downloaded successfully
+        CSPROJ=$(basename $(find ./src -type f -wholename "*.csproj" ! -wholename "*build*" ! -wholename "*test*") .csproj)
+        DLL=$(find ./ -type f -wholename "*/bin/Release/*/$CSPROJ.dll" ! -wholename "*build*" ! -wholename "*test*")
+        echo $DLL will be added to appPath
+        java -jar wss-unified-agent.jar -appPath ./SCNDISC.Server/SCNDISC.Server.Domain/bin/Debug/netstandard2.0/SCNDISC.Server.Domain.dll -d ./SCNDISC.Server/SCNDISC.Server.Domain
 
-- task: VSBuild@1
-  inputs:
-    solution: '$(solution)'
-    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactStagingDirectory)\WebApp.zip" /p:DeployIisAppPath="Default Web Site"'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
 
-- task: PowerShell@2
-  inputs:
-    targetType: 'inline'
-    script: |
-      $CSPROJ=(Get-ChildItem -Path ./src -Recurse -Filter '*.csproj' | Foreach-Object {$_.BaseName})
-      $DLL=(Get-ChildItem -Path ./ -Recurse -Filter "$CSPROJ.dll" | where{$_.DirectoryName -match "bin\\Release" -and $_.DirectoryName -notmatch "test"} | Select-Object -ExpandProperty FullName)
-      echo $DLL will be added to appPath
-      wget https://unified-agent.s3.amazonaws.com/wss-unified-agent.jar -OutFile wss-unified-agent.jar
-      echo Unified Agent downloaded successfully
-      java -jar wss-unified-agent.jar -appPath ./SCNDISC.Server/SCNDISC.Server.Domain/bin/Debug/netstandard2.0/SCNDISC.Server.Domain.dll -d ./SCNDISC.Server/SCNDISC.Server.Domain
-  env:
-    WS_APIKEY: $(APIKEY)
-    WS_USERKEY: $(USERKEY)
-    WS_WSS_URL: https://app.whitesourcesoftware.com/agent
-    WS_PRODUCTNAME: AZDO_$(System.TeamProject)
-    WS_PROJECTNAME: $(Build.Repository.Name)_$(Build.SourceBranchName)_Prioritize
-    WS_ENABLEIMPACTANALYSIS: true
-    WS_REQUIREKNOWNSHA1: false
-    WS_RESOLVEALLDEPENDENCIES: false
-    WS_NUGET_RESOLVEDEPENDENCIES: true
-    WS_NUGET_RUNPRESTEP: true
-    WS_FILESYSTEMSCAN: false
-    WS_GENERATEPROJECTDETAILSJSON: true
-    WS_EXCLUDES: '**/build/** **/tests/**'
-  displayName: 'Unified Agent Prioritize Scan'
