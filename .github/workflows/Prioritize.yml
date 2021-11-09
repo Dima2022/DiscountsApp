@@ -11,7 +11,7 @@ jobs:
       with:
         dotnet-version: 3.1.402
     - name: Build CSProj
-      run: dotnet run -p ./SCNDISC.Server.Core/SCNDISC.Server.Core.csproj
+      run: dotnet run -p ./build/build.csproj
     - name: WhiteSource Unified Agent Scan
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
