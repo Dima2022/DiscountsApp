@@ -11,7 +11,7 @@ jobs:
       with:
         dotnet-version: 3.1.402
     - name: Build CSProj
-      run: dotnet run -p ./SCNDISC.Server.Core
+      run: dotnet run -p ./SCNDISC.Server/SCNDISC.Server.Core
     - name: WhiteSource Unified Agent Scan
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
@@ -31,5 +31,5 @@ jobs:
       run: |
         curl -LJO https://unified-agent.s3.amazonaws.com/wss-unified-agent.jar
         echo Unified Agent downloaded successfully
-        java -jar wss-unified-agent.jar -appPath ./SCNDISC.Server.Core/bin/Debug/netcoreapp2.1/SCNDISC.Server.Core.dll -d ./SCNDISC.Server.Core
+        java -jar wss-unified-agent.jar -appPath ./SCNDISC.Server/SCNDISC.Server.Core/bin/Debug/netcoreapp2.1/SCNDISC.Server.Core.dll -d ./SCNDISC.Server/SCNDISC.Server.Core
         
